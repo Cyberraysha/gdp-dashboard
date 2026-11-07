@@ -3,7 +3,8 @@ import requests
 import phonenumbers
 from phonenumbers import carrier, geocoder
 from PIL import Image
-from pyzbar.pyzbar import decode
+import cv2
+import numpy as np
 
 st.set_page_config(page_title="ER-RAYSA SUPER CHECK", page_icon="🛡️", layout="centered")
 
@@ -12,7 +13,6 @@ st.caption("Bantu Cek IP, Nomor HP & Rekening Penipu - Aman & Legal")
 
 tab1, tab2, tab3, tab4 = st.tabs(["🌍 CEK IP", "📱 CEK NO HP", "🏦 CEK REKENING", "🔳 CEK QR"])
 
-# TAB 1 - IP (KODE LU YANG KEMARIN JANGAN DIHAPUS, TARO DISINI)
 with tab1:
     st.subheader("Cek IP Viewer TikTok")
     ip_input = st.text_input("Masukkan IP", placeholder="Contoh: 36.85.12.44 (punya lu yang Malang tadi)")
@@ -30,7 +30,6 @@ with tab1:
             except:
                 st.error("Gagal cek IP")
 
-# TAB 2 - NO HP
 with tab2:
     st.subheader("Cek Nomor HP (Wajib Izin Pemilik)")
     st.warning("⚠️ Ini cuma cek provider & area registrasi awal, BUKAN GPS live orangnya!")
@@ -45,40 +44,36 @@ with tab2:
                 st.success(f"Nomor {nomor} Valid!" if valid else "Nomor tidak valid")
                 st.write(f"**Provider:** {prov}")
                 st.write(f"**Area Registrasi Awal:** {area}")
-                st.info("Penjelasan buat penonton: Ini bukan posisi dia sekarang, ini cuma tempat nomor ini pertama kali didaftarkan. Posisi live cuma bisa dilacak polisi.")
+                st.info("Ini bukan posisi dia sekarang, ini cuma tempat nomor ini pertama kali didaftarkan.")
                 wa_num = phonenumbers.format_number(parse, phonenumbers.PhoneNumberFormat.E164).replace("+","")
                 st.link_button("💬 Chat WA Nomor Ini", f"https://wa.me/{wa_num}")
             except:
                 st.error("Nomor gak valid bro")
 
-# TAB 3 - REKENING
 with tab3:
     st.subheader("Cek Rekening Penipu")
     st.write("Ini fitur paling penting buat korban ketipu di FB!")
-    st.info("Klik tombol di bawah, nanti masukin nomor rekening penipu. Kalo rekeningnya udah banyak laporan, langsung lapor ke bank buat dibekuin!")
     st.link_button("🔍 CEK DI CEKREKENING.ID (Resmi Kominfo)", "https://cekrekening.id")
     st.link_button("🔍 CEK DI KREDIBEL.CO.ID", "https://kredibel.co.id")
     st.write("---")
     st.write("**Abis cek, apa yang harus dilakuin korban?**")
-    st.write("1. Screenshot hasil cek yang ada laporan penipu\n2. Lapor ke bank pemilik rekening (BCA/BRI dll) minta blokir\n3. Lapor online ke patrolisiber.id")
+    st.write("1. Screenshot hasil cek yang ada laporan penipu")
+    st.write("2. Lapor ke bank pemilik rekening minta blokir")
+    st.write("3. Lapor online ke patrolisiber.id")
 
-# TAB 4 - QR
 with tab4:
     st.subheader("Cek Kode QR Transferan")
     st.write("Kalo korban transfer pake QRIS, upload foto QR nya disini!")
     uploaded = st.file_uploader("Upload foto QR Code", type=["jpg","png","jpeg"])
     if uploaded:
-        img = Image.open(uploaded)
-        st.image(img, caption="Foto QR yang diupload")
-        decoded = decode(img)
-        if decoded:
-            for obj in decoded:
-                data = obj.data.decode('utf-8')
-                st.success("QR Berhasil Dibaca!")
-                st.code(data)
-                st.write("**Isinya biasanya:** ID Merchant / Nama Toko / Nomor Rekening. Copy ID itu terus cek di Tab Cek Rekening!")
+        file_bytes = np.asarray(bytearray(uploaded.read()), dtype=np.uint8)
+        opencv_image = cv2.imdecode(file_bytes, 1)
+        st.image(opencv_image, caption="Foto QR yang diupload", channels="BGR")
+        detector = cv2.QRCodeDetector()
+        data, bbox, straight_qrcode = detector.detectAndDecode(opencv_image)
+        if data:
+            st.success("QR Berhasil Dibaca!")
+            st.code(data)
+            st.write("Copy ID itu terus cek di Tab Cek Rekening!")
         else:
-            st.error("QR gak kebaca bro, coba foto yang lebih jelas, jangan blur.")
-
-st.write("---")
-st.caption("Dibuat oleh ER-RAYSA | Edukasi Anti Tipu-Tipu | Bukan untuk doxxing, hanya untuk edukasi & bantu lapor resmi")
+            st.error("QR gak kebaca bro, coba foto yang lebih jelas.")
