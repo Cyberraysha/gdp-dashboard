@@ -1,2 +1,5 @@
 streamlit
-pandas
+requests
+phonenumbers
+Pillow
+opencv-python-headless
